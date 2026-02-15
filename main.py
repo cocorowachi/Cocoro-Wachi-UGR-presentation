@@ -20,16 +20,16 @@ with title_cols[0]:
 with title_cols[1]:
     st.header("Breaking Apart Wet Weather Flow Signals Allows Streamlined Auto-calibration of Sewer Hydrology Models")
     st.write("Dr. William Gonwa P.E., Cocoro Wachi Undergraduate")
-cols = st.columns(3)
-with cols[0]:
+topbutton_cols = st.columns([2,2,2])
+with topbutton_cols[0]:
     if st.button("Dashboard", type="primary" if st.session_state.page == "dashboard" else "secondary", disabled=not st.session_state._init_, width="stretch"):
         st.session_state.page = "dashboard"
         st.rerun()
-with cols[1]:
+with topbutton_cols[1]:
     if st.button("Poster", type="primary" if st.session_state.page == "poster" else "secondary", disabled=not st.session_state._init_, width="stretch"):
         st.session_state.page = "poster"
         st.rerun()
-with cols[2]:
+with topbutton_cols[2]:
     if st.button("Authors", type="primary" if st.session_state.page == "authors" else "secondary", disabled=not st.session_state._init_, width="stretch"):
         st.session_state.page = "authors"
         st.rerun()
@@ -107,7 +107,7 @@ if st.session_state.page == "dashboard":
         hovermode='x unified', 
         dragmode='pan'
     )
-    fig.update_yaxes(range=[0, 4])
+    fig.update_yaxes(range=[-0.5, 4])
     st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
     ########################################
@@ -128,7 +128,7 @@ if st.session_state.page == "dashboard":
         hovermode='x unified', 
         dragmode='pan'
     )
-    fig.update_yaxes(range=[0, 4])
+    fig.update_yaxes(range=[-0.5, 4])
     st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
     ###############################
@@ -149,7 +149,7 @@ if st.session_state.page == "dashboard":
         hovermode='x unified', 
         dragmode='pan'
     )
-    fig.update_yaxes(range=[0, 4])
+    fig.update_yaxes(range=[-0.5, 4])
     st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
     ##############################
@@ -170,7 +170,7 @@ if st.session_state.page == "dashboard":
         hovermode='x unified', 
         dragmode='pan'
     )
-    fig.update_yaxes(range=[0, 4])
+    fig.update_yaxes(range=[-0.5, 4])
     st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
 
@@ -192,7 +192,7 @@ if st.session_state.page == "dashboard":
         hovermode='x unified', 
         dragmode='pan'
     )
-    fig.update_yaxes(range=[0, 4])
+    fig.update_yaxes(range=[-0.5, 4])
     st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
     ####################
@@ -332,7 +332,7 @@ if st.session_state.page == "authors":
             st.write("+1(224)345-1255, wachic@msoe.edu")
             with open("graphics/wachi_resume.pdf", "rb") as f:
                 pdf_bytes = f.read()
-            st.download_button("📥Download Resume", data=pdf_bytes, file_name="Cocoro Wachi Resume.pdf")
+            st.download_button("Download Resume", data=pdf_bytes, file_name="Cocoro Wachi Resume.pdf")
     st.write("---")
     with st.container():
         st.header("Acknowledgement")
