@@ -10,7 +10,8 @@ st.set_page_config(
     page_icon="graphics/msoe_icon.png",
     layout="wide"
 )
-if "page" not in st.session_state:
+if "_init_" not in st.session_state:
+    st.session_state._init_ = False
     st.session_state.page = "dashboard"
 # Header
 title_cols = st.columns([1,10])
@@ -21,20 +22,19 @@ with title_cols[1]:
     st.write("Authors: Dr. William Gonwa P.E., Cocoro Wachi Undergraduate")
 cols = st.columns(3)
 with cols[0]:
-    if st.button("Dashboard", type="primary" if st.session_state.page == "dashboard" else "secondary", disabled="_init_" not in st.session_state, width="stretch"):
+    if st.button("Dashboard", type="primary" if st.session_state.page == "dashboard" else "secondary", disabled=not st.session_state._init_, width="stretch"):
         st.session_state.page = "dashboard"
         st.rerun()
 with cols[1]:
-    if st.button("Poster", type="primary" if st.session_state.page == "poster" else "secondary", disabled="_init_" not in st.session_state, width="stretch"):
+    if st.button("Poster", type="primary" if st.session_state.page == "poster" else "secondary", disabled=not st.session_state._init_, width="stretch"):
         st.session_state.page = "poster"
         st.rerun()
 with cols[2]:
-    if st.button("Authors", type="primary" if st.session_state.page == "authors" else "secondary", disabled="_init_" not in st.session_state, width="stretch"):
+    if st.button("Authors", type="primary" if st.session_state.page == "authors" else "secondary", disabled=not st.session_state._init_, width="stretch"):
         st.session_state.page = "authors"
         st.rerun()
 st.write("---")
-if "_init_" not in st.session_state:
-
+if not st.session_state._init_:
     path = "Data/"
     temp = "Temperature.csv"
     sewer = "MMSD Sewer Flow Data.csv"
