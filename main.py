@@ -6,11 +6,33 @@ from AutocalibrateTrad import AutocalibrateTrad
 import plotly.graph_objects as go
 from model import moving_avg_numba
 st.set_page_config(
-    page_title="Presentation Demo",
-    page_icon="📊",
+    page_title="MSOE UGR Sewer Dashboard",
+    page_icon="graphics/msoe_icon.png",
     layout="wide"
 )
-
+if "page" not in st.session_state:
+    st.session_state.page = "dashboard"
+# Header
+title_cols = st.columns([1,10])
+with title_cols[0]:
+    st.image("graphics/msoe_logo.png", width=100)
+with title_cols[1]:
+    st.header("Breaking Apart Wet Weather Flow Signals Allows Streamlined Auto-calibration of Sewer Hydrology Models")
+    st.write("Authors: Dr. William Gonwa P.E., Cocoro Wachi Undergraduate")
+cols = st.columns(3)
+with cols[0]:
+    if st.button("Dashboard", type="primary" if st.session_state.page == "dashboard" else "secondary", width="stretch"):
+        st.session_state.page = "dashboard"
+        st.rerun()
+with cols[1]:
+    if st.button("Poster", type="primary" if st.session_state.page == "poster" else "secondary", width="stretch"):
+        st.session_state.page = "poster"
+        st.rerun()
+with cols[2]:
+    if st.button("Authors", type="primary" if st.session_state.page == "authors" else "secondary", width="stretch"):
+        st.session_state.page = "authors"
+        st.rerun()
+st.write("---")
 if "_init_" not in st.session_state:
     st.session_state._init_ = True
 
@@ -61,290 +83,301 @@ plot_config = {
     'displayModeBar': True,
     'scrollZoom': True
 }
+if st.session_state.page == "dashboard":
+    #################################
+    # Diurnal
+    fig = go.Figure()
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.diurnal, name="seasonal", mode="lines", yaxis='y1'))
+    fig.update_layout(
+        title="Fast Response",
+        xaxis_title="Date Time",
+        yaxis=dict(title='Flow [MGD]',
+                    side='left',
+                    fixedrange=True),
+        yaxis2=dict(title='Flow [cfs]',
+                    side='right',
+                    showgrid=False,
+                    fixedrange=True),
+        template="plotly_dark",
+        hovermode='x unified', 
+        dragmode='pan'
+    )
+    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
-#################################
-# Diurnal
-fig = go.Figure()
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.diurnal, name="seasonal", mode="lines", yaxis='y1'))
-fig.update_layout(
-    title="Fast Response",
-    xaxis_title="Date Time",
-    yaxis=dict(title='Flow [MGD]',
-                side='left',
-                fixedrange=True),
-    yaxis2=dict(title='Flow [cfs]',
-                side='right',
-                showgrid=False,
-                fixedrange=True),
-    template="plotly_dark",
-    hovermode='x unified', 
-    dragmode='pan'
-)
-st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+    ######################################
+    # obs disagg
+    fig = go.Figure()
+    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                                       name="precip", mode="lines", yaxis='y2'))
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],                line_color="blue", name="fast", mode="lines", yaxis='y1'))
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_slow_flow+acali.obs_seasonal)[s:e],                                    line_color="red", name="slow", mode="lines", yaxis='y1'))
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_seasonal[s:e],                                                          line_color="green", name="seasonal", mode="lines", yaxis='y1'))
+    # fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.diurnal+acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],  name="diurnal", mode="lines", yaxis='y1'))
+    fig.update_layout(
+        title="Responses",
+        xaxis_title="Date Time",
+        xaxis_showgrid=True,
+        yaxis=dict(title='Flow [MGD]',
+                    side='left',
+                    showgrid=True,
+                    fixedrange=True),
+        # yaxis2=dict(title='Flow [cfs]',
+        #             side='right',
+        #             showgrid=False,
+        #             fixedrange=True,
+        #             autorange="reversed"),
+        template="plotly_dark",
+        hovermode='x unified', 
+        dragmode='pan'
+    )
+    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
-######################################
-# obs disagg
-fig = go.Figure()
-# fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                                       name="precip", mode="lines", yaxis='y2'))
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],                line_color="blue", name="fast", mode="lines", yaxis='y1'))
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_slow_flow+acali.obs_seasonal)[s:e],                                    line_color="red", name="slow", mode="lines", yaxis='y1'))
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_seasonal[s:e],                                                          line_color="green", name="seasonal", mode="lines", yaxis='y1'))
-# fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.diurnal+acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],  name="diurnal", mode="lines", yaxis='y1'))
-fig.update_layout(
-    title="Responses",
-    xaxis_title="Date Time",
-    xaxis_showgrid=True,
-    yaxis=dict(title='Flow [MGD]',
-                side='left',
+    ########################################
+    # model fast
+    st.write(acali.fast_param)
+    fig = go.Figure()
+    # fig.add_trace(go.Scattergl(x=datetime[2:], y=acali.precip_signal[2:],   line_color="green", name="precip", mode="lines", yaxis='y2'))
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_fast_flow[s:e],   line_color="blue", name="obs", mode="lines", yaxis='y1'))
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=sim_fast[s:e],              line_color="red", name="sim", mode="lines", yaxis='y1'))
+    fig.update_layout(
+        title="Fast Response",
+        xaxis=dict(title="Date Time",
                 showgrid=True,
                 fixedrange=True),
-    # yaxis2=dict(title='Flow [cfs]',
-    #             side='right',
-    #             showgrid=False,
-    #             fixedrange=True,
-    #             autorange="reversed"),
-    template="plotly_dark",
-    hovermode='x unified', 
-    dragmode='pan'
-)
-st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+        yaxis=dict(title='Flow [MGD]',
+                    side='left',
+                    fixedrange=False),
+        # yaxis2=dict(title='Flow [cfs]',
+        #             side='right',
+        #             showgrid=False,
+        #             fixedrange=True,
+        #             autorange="reversed"),
+        template="plotly_dark",
+        hovermode='x unified', 
+        dragmode='pan'
+    )
+    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
-########################################
-# model fast
-st.write(acali.fast_param)
-fig = go.Figure()
-# fig.add_trace(go.Scattergl(x=datetime[2:], y=acali.precip_signal[2:],   line_color="green", name="precip", mode="lines", yaxis='y2'))
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_fast_flow[s:e],   line_color="blue", name="obs", mode="lines", yaxis='y1'))
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=sim_fast[s:e],              line_color="red", name="sim", mode="lines", yaxis='y1'))
-fig.update_layout(
-    title="Fast Response",
-    xaxis=dict(title="Date Time",
-               showgrid=True,
-               fixedrange=True),
-    yaxis=dict(title='Flow [MGD]',
-                side='left',
-                fixedrange=False),
-    # yaxis2=dict(title='Flow [cfs]',
-    #             side='right',
-    #             showgrid=False,
-    #             fixedrange=True,
-    #             autorange="reversed"),
-    template="plotly_dark",
-    hovermode='x unified', 
-    dragmode='pan'
-)
-st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
-
-###############################
-# Model slow
-st.write(acali.slow_param)
-fig = go.Figure()
-# fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,   line_color="green", name="precip", mode="lines", yaxis='y2'))
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_slow_flow[s:e],   line_color="blue", name="obs", mode="lines", yaxis='y1'))
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=sim_slow[s:e],              line_color="red", name="sim", mode="lines", yaxis='y1'))
-fig.update_layout(
-    title="Slow Response",
-    xaxis=dict(title="Date Time",
-               showgrid=True,
-               fixedrange=True),
-    yaxis=dict(title='Flow [MGD]',
-                side='left',
-                fixedrange=False),
-    # yaxis2=dict(title='Flow [cfs]',
-    #             side='right',
-    #             showgrid=False,
-    #             fixedrange=True,
-    #             autorange="reversed"),
-    template="plotly_dark",
-    hovermode='x unified', 
-    dragmode='pan'
-)
-st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
-
-##############################
-# model seasonal
-st.write(acali.seasonal_param)
-fig = go.Figure()
-# fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,   line_color="green", name="precip", mode="lines", yaxis='y2'))
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_seasonal[s:e],    line_color="blue", name="obs", mode="lines", yaxis='y1'))
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=sim_seasonal[s:e],          line_color="red", name="sim", mode="lines", yaxis='y1'))
-fig.update_layout(
-    title="Seasonal Response",
-    xaxis=dict(title="Date Time",
-               showgrid=True,
-               fixedrange=True),
-    yaxis=dict(title='Flow [MGD]',
-                side='left',
-                fixedrange=False),
-    # yaxis2=dict(title='Flow [cfs]',
-    #             side='right',
-    #             showgrid=False,
-    #             fixedrange=True,
-    #             autorange="reversed"),
-    template="plotly_dark",
-    hovermode='x unified', 
-    dragmode='pan'
-)
-st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
-
-
-#############################3
-# combine
-fig = go.Figure()
-# fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                           line_color="green", name="precip", mode="lines", yaxis='y2'))
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=acaliT.sim_rdii[s:e],                                                     line_color="green", name="observed", mode="lines", yaxis='y1'))
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],    line_color="blue", name="observed", mode="lines", yaxis='y1'))
-fig.add_trace(go.Scattergl(x=datetime[s:e], y=(sim_fast+sim_slow+sim_seasonal)[s:e],                          line_color="red", name="simulated", mode="lines", yaxis='y1'))
-
-fig.update_layout(
-    title="combine Response",
-    xaxis_title="Date Time",
-    xaxis_showgrid=True,
-    yaxis=dict(title='Flow [MGD]',
-                side='left',
+    ###############################
+    # Model slow
+    st.write(acali.slow_param)
+    fig = go.Figure()
+    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,   line_color="green", name="precip", mode="lines", yaxis='y2'))
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_slow_flow[s:e],   line_color="blue", name="obs", mode="lines", yaxis='y1'))
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=sim_slow[s:e],              line_color="red", name="sim", mode="lines", yaxis='y1'))
+    fig.update_layout(
+        title="Slow Response",
+        xaxis=dict(title="Date Time",
+                showgrid=True,
                 fixedrange=True),
-    # yaxis2=dict(title='Flow [cfs]',
-    #             side='right',
-    #             showgrid=False,
-    #             fixedrange=True,
-    #             autorange="reversed"),
-    template="plotly_dark",
-    hovermode='x unified', 
-    dragmode='pan'
-)
-st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+        yaxis=dict(title='Flow [MGD]',
+                    side='left',
+                    fixedrange=False),
+        # yaxis2=dict(title='Flow [cfs]',
+        #             side='right',
+        #             showgrid=False,
+        #             fixedrange=True,
+        #             autorange="reversed"),
+        template="plotly_dark",
+        hovermode='x unified', 
+        dragmode='pan'
+    )
+    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+
+    ##############################
+    # model seasonal
+    st.write(acali.seasonal_param)
+    fig = go.Figure()
+    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,   line_color="green", name="precip", mode="lines", yaxis='y2'))
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_seasonal[s:e],    line_color="blue", name="obs", mode="lines", yaxis='y1'))
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=sim_seasonal[s:e],          line_color="red", name="sim", mode="lines", yaxis='y1'))
+    fig.update_layout(
+        title="Seasonal Response",
+        xaxis=dict(title="Date Time",
+                showgrid=True,
+                fixedrange=True),
+        yaxis=dict(title='Flow [MGD]',
+                    side='left',
+                    fixedrange=False),
+        # yaxis2=dict(title='Flow [cfs]',
+        #             side='right',
+        #             showgrid=False,
+        #             fixedrange=True,
+        #             autorange="reversed"),
+        template="plotly_dark",
+        hovermode='x unified', 
+        dragmode='pan'
+    )
+    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
 
-#############################3
-# Onetoone
-fig = go.Figure()
-# fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                           line_color="green", name="precip", mode="lines", yaxis='y2'))
-fig.add_trace(go.Scattergl(x=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e], y=acaliT.sim_rdii[s:e],                    line_color="blue", name="observed", mode="markers", yaxis='y1'))
-fig.add_trace(go.Scattergl(x=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e], y=(sim_fast+sim_slow+sim_seasonal)[s:e],   line_color="green", name="observed", mode="markers", yaxis='y1'))
+    #############################3
+    # combine
+    fig = go.Figure()
+    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                           line_color="green", name="precip", mode="lines", yaxis='y2'))
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acaliT.sim_rdii[s:e],                                                     line_color="green", name="observed", mode="lines", yaxis='y1'))
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],    line_color="blue", name="observed", mode="lines", yaxis='y1'))
+    fig.add_trace(go.Scattergl(x=datetime[s:e], y=(sim_fast+sim_slow+sim_seasonal)[s:e],                          line_color="red", name="simulated", mode="lines", yaxis='y1'))
 
-fig.update_layout(
-    title="combine Response",
-    xaxis_title="Date Time",
-    xaxis_showgrid=True,
-    yaxis=dict(title='Flow [MGD]',
-                side='left'),
-    # yaxis2=dict(title='Flow [cfs]',
-    #             side='right',
-    #             showgrid=False,
-    #             fixedrange=True,
-    #             autorange="reversed"),
-    template="plotly_dark",
-    dragmode='pan'
-)
-st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
-
-####################
-# Event OTO
-obs_rdii = (acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)
-sim_rdii = (sim_fast+sim_slow+sim_seasonal)
-simT_rdii = acaliT.sim_rdii
-
-obs_events = []
-sim_events = []
-simT_events = []
-
-for start, end in events:
-    mask = (datetime >= start) & (datetime <= end)
-    obs_events.append(obs_rdii[mask].sum())
-    sim_events.append(sim_rdii[mask].sum())
-    simT_events.append(simT_rdii[mask].sum())
-
-obs_events = np.array(obs_events)
-sim_events = np.array(sim_events)
-simT_events = np.array(simT_events)
+    fig.update_layout(
+        title="combine Response",
+        xaxis_title="Date Time",
+        xaxis_showgrid=True,
+        yaxis=dict(title='Flow [MGD]',
+                    side='left',
+                    fixedrange=True),
+        # yaxis2=dict(title='Flow [cfs]',
+        #             side='right',
+        #             showgrid=False,
+        #             fixedrange=True,
+        #             autorange="reversed"),
+        template="plotly_dark",
+        hovermode='x unified', 
+        dragmode='pan'
+    )
+    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
 
-fig = go.Figure()
-# fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                           line_color="green", name="precip", mode="lines", yaxis='y2'))
-fig.add_trace(go.Scattergl(x=obs_events, y=sim_events, line_color="blue", name="observed", mode="markers", marker_size=20, yaxis='y1'))
-fig.add_trace(go.Scattergl(x=obs_events, y=simT_events, line_color="red", name="observed", mode="markers", marker_size=20, yaxis='y1'))
+    #############################3
+    # Onetoone
+    fig = go.Figure()
+    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                           line_color="green", name="precip", mode="lines", yaxis='y2'))
+    fig.add_trace(go.Scattergl(x=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e], y=acaliT.sim_rdii[s:e],                    line_color="blue", name="observed", mode="markers", yaxis='y1'))
+    fig.add_trace(go.Scattergl(x=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e], y=(sim_fast+sim_slow+sim_seasonal)[s:e],   line_color="green", name="observed", mode="markers", yaxis='y1'))
+
+    fig.update_layout(
+        title="combine Response",
+        xaxis_title="Date Time",
+        xaxis_showgrid=True,
+        yaxis=dict(title='Flow [MGD]',
+                    side='left'),
+        # yaxis2=dict(title='Flow [cfs]',
+        #             side='right',
+        #             showgrid=False,
+        #             fixedrange=True,
+        #             autorange="reversed"),
+        template="plotly_dark",
+        dragmode='pan'
+    )
+    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+
+    ####################
+    # Event OTO
+    obs_rdii = (acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)
+    sim_rdii = (sim_fast+sim_slow+sim_seasonal)
+    simT_rdii = acaliT.sim_rdii
+
+    obs_events = []
+    sim_events = []
+    simT_events = []
+
+    for start, end in events:
+        mask = (datetime >= start) & (datetime <= end)
+        obs_events.append(obs_rdii[mask].sum())
+        sim_events.append(sim_rdii[mask].sum())
+        simT_events.append(simT_rdii[mask].sum())
+
+    obs_events = np.array(obs_events)
+    sim_events = np.array(sim_events)
+    simT_events = np.array(simT_events)
 
 
-m1, b1 = np.polyfit(obs_events, sim_events, 1)   # slope, intercept
-fig.add_trace(go.Scattergl(x=[0,max(obs_events)], y=[b1, m1*max(obs_events)+b1], line_color="blue", name="observed", mode="lines", yaxis='y1'))
-st.write("m1:",m1,", b1:",b1)
-m2, b2 = np.polyfit(obs_events, simT_events, 1)   # slope, intercept
-fig.add_trace(go.Scattergl(x=[0,max(obs_events)], y=[b2, m2*max(obs_events)+b2], line_color="red", name="observed", mode="lines", yaxis='y1'))
-st.write("m2:",m2,", b2:",b2)
-
-fig.add_trace(go.Scattergl(x=[0,max(obs_events)], y=[0, max(obs_events)], line_color="black", line_dash="dash", name="observed", mode="lines", yaxis='y1'))
+    fig = go.Figure()
+    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                           line_color="green", name="precip", mode="lines", yaxis='y2'))
+    fig.add_trace(go.Scattergl(x=obs_events, y=sim_events, line_color="blue", name="observed", mode="markers", marker_size=20, yaxis='y1'))
+    fig.add_trace(go.Scattergl(x=obs_events, y=simT_events, line_color="red", name="observed", mode="markers", marker_size=20, yaxis='y1'))
 
 
-fig.update_layout(
-    width=400, height=1000,
-    title="combine Response",
-    xaxis_title="Date Time",
-    xaxis_showgrid=True,
-    yaxis=dict(title='Flow [MGD]',
-                side='left'),
-    template="plotly_dark",
-    dragmode='pan'
-)
-st.plotly_chart(fig, config={'scrollZoom': True})
+    m1, b1 = np.polyfit(obs_events, sim_events, 1)   # slope, intercept
+    fig.add_trace(go.Scattergl(x=[0,max(obs_events)], y=[b1, m1*max(obs_events)+b1], line_color="blue", name="observed", mode="lines", yaxis='y1'))
+    st.write("m1:",m1,", b1:",b1)
+    m2, b2 = np.polyfit(obs_events, simT_events, 1)   # slope, intercept
+    fig.add_trace(go.Scattergl(x=[0,max(obs_events)], y=[b2, m2*max(obs_events)+b2], line_color="red", name="observed", mode="lines", yaxis='y1'))
+    st.write("m2:",m2,", b2:",b2)
+
+    fig.add_trace(go.Scattergl(x=[0,max(obs_events)], y=[0, max(obs_events)], line_color="black", line_dash="dash", name="observed", mode="lines", yaxis='y1'))
 
 
-####################
-# peak vol oto
-obs_rdii = (acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)
-sim_rdii = (sim_fast+sim_slow+sim_seasonal)
-simT_rdii = acaliT.sim_rdii
-
-obs_top20 = []
-sim_top20 = []
-simT_top20 = []
-
-for start, end in events:
-    mask = (datetime >= start) & (datetime <= end)
-    obs_top20.append(max(obs_rdii[mask]))
-    sim_top20.append(max(sim_rdii[mask]))
-    simT_top20.append(max(simT_rdii[mask]))
-
-obs_top20 = np.array(obs_top20)
-sim_top20 = np.array(sim_top20)
-simT_top20 = np.array(simT_top20)
-
-fig = go.Figure()
-# fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                           line_color="green", name="precip", mode="lines", yaxis='y2'))
-fig.add_trace(go.Scattergl(x=obs_top20, y=sim_top20, line_color="blue", name="observed", mode="markers", marker_size=20, yaxis='y1'))
-fig.add_trace(go.Scattergl(x=obs_top20, y=simT_top20, line_color="red", name="observed", mode="markers", marker_size=20, yaxis='y1'))
+    fig.update_layout(
+        width=400, height=1000,
+        title="combine Response",
+        xaxis_title="Date Time",
+        xaxis_showgrid=True,
+        yaxis=dict(title='Flow [MGD]',
+                    side='left'),
+        template="plotly_dark",
+        dragmode='pan'
+    )
+    st.plotly_chart(fig, config={'scrollZoom': True})
 
 
-m1, b1 = np.polyfit(obs_top20, sim_top20, 1)   # slope, intercept
-fig.add_trace(go.Scattergl(x=[0,max(obs_top20)], y=[b1, m1*max(obs_top20)+b1], line_color="blue", name="observed", mode="lines", yaxis='y1'))
-st.write("m1:",m1,", b1:",b1)
-m2, b2 = np.polyfit(obs_top20, simT_top20, 1)   # slope, intercept
-fig.add_trace(go.Scattergl(x=[0,max(obs_top20)], y=[b2, m2*max(obs_top20)+b2], line_color="red", name="observed", mode="lines", yaxis='y1'))
-st.write("m2:",m2,", b2:",b2)
+    ####################
+    # peak vol oto
+    obs_rdii = (acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)
+    sim_rdii = (sim_fast+sim_slow+sim_seasonal)
+    simT_rdii = acaliT.sim_rdii
 
-fig.add_trace(go.Scattergl(x=[0,max(obs_top20)], y=[0, max(obs_top20)], line_dash="dash",line_color="black", name="observed", mode="lines", yaxis='y1'))
+    obs_top20 = []
+    sim_top20 = []
+    simT_top20 = []
 
+    for start, end in events:
+        mask = (datetime >= start) & (datetime <= end)
+        obs_top20.append(max(obs_rdii[mask]))
+        sim_top20.append(max(sim_rdii[mask]))
+        simT_top20.append(max(simT_rdii[mask]))
 
-fig.update_layout(
-    width=400, height=1000,
-    title="combine Response",
-    xaxis_title="Date Time",
-    xaxis_showgrid=True,
-    yaxis=dict(title='Flow [MGD]',
-                side='left'),
-    template="plotly_dark",
-    dragmode='pan'
-)
-st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+    obs_top20 = np.array(obs_top20)
+    sim_top20 = np.array(sim_top20)
+    simT_top20 = np.array(simT_top20)
 
-
-
-
-
-
-st.button("reset")
-
-print(acaliT.sim_rdii)
+    fig = go.Figure()
+    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                           line_color="green", name="precip", mode="lines", yaxis='y2'))
+    fig.add_trace(go.Scattergl(x=obs_top20, y=sim_top20, line_color="blue", name="observed", mode="markers", marker_size=20, yaxis='y1'))
+    fig.add_trace(go.Scattergl(x=obs_top20, y=simT_top20, line_color="red", name="observed", mode="markers", marker_size=20, yaxis='y1'))
 
 
-st.write("Trad",(((acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e] - acaliT.sim_rdii[s:e])**2).sum())
-st.write("new", (((acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e] - (sim_fast+sim_slow+sim_seasonal)[s:e])**2).sum())
+    m1, b1 = np.polyfit(obs_top20, sim_top20, 1)   # slope, intercept
+    fig.add_trace(go.Scattergl(x=[0,max(obs_top20)], y=[b1, m1*max(obs_top20)+b1], line_color="blue", name="observed", mode="lines", yaxis='y1'))
+    st.write("m1:",m1,", b1:",b1)
+    m2, b2 = np.polyfit(obs_top20, simT_top20, 1)   # slope, intercept
+    fig.add_trace(go.Scattergl(x=[0,max(obs_top20)], y=[b2, m2*max(obs_top20)+b2], line_color="red", name="observed", mode="lines", yaxis='y1'))
+    st.write("m2:",m2,", b2:",b2)
+
+    fig.add_trace(go.Scattergl(x=[0,max(obs_top20)], y=[0, max(obs_top20)], line_dash="dash",line_color="black", name="observed", mode="lines", yaxis='y1'))
+
+
+    fig.update_layout(
+        width=400, height=1000,
+        title="combine Response",
+        xaxis_title="Date Time",
+        xaxis_showgrid=True,
+        yaxis=dict(title='Flow [MGD]',
+                    side='left'),
+        template="plotly_dark",
+        dragmode='pan'
+    )
+    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+
+
+
+
+
+
+    st.button("reset")
+
+    print(acaliT.sim_rdii)
+
+
+    st.write("Trad",(((acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e] - acaliT.sim_rdii[s:e])**2).sum())
+    st.write("new", (((acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e] - (sim_fast+sim_slow+sim_seasonal)[s:e])**2).sum())
+
+
+if st.session_state.page == "poster":
+    poster_cols = st.columns([6,1])
+    with poster_cols[0]:
+        with st.container(border=True, width="stretch"):
+            st.image("graphics/ICWMM_poster.png", width="stretch")
+    with poster_cols[1]:
+        with open("graphics/ICWMM_poster.pdf", "rb") as f:
+            file_bytes = f.read()
+        st.download_button("📥Download as PDF", data=file_bytes, file_name="Wachi_ICWMM2026_Poster.pdf")
