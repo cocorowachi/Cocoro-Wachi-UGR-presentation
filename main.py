@@ -381,3 +381,40 @@ if st.session_state.page == "poster":
         with open("graphics/ICWMM_poster.pdf", "rb") as f:
             file_bytes = f.read()
         st.download_button("📥Download as PDF", data=file_bytes, file_name="Wachi_ICWMM2026_Poster.pdf")
+
+
+
+if st.session_state.page == "authors":
+    with st.container():
+        gonwa_cols = st.columns([1,6])
+        with gonwa_cols[0]:
+            st.image("graphics/gonwa.jpg")
+        with gonwa_cols[1]:
+            st.header("Dr. William Gonwa P.E., Milwaukee School of Engineering.")
+            st.write("Professor and Program Director for Civil Engineering.")
+            st.write("Civil and Architectural Engineering and Construction Management.")
+            st.write("Campus Center CC-27")
+            st.write("+1(414)277-7320, gonwa@msoe.edu")
+            st.markdown(
+                '<a href="https://www.msoe.edu/directory/profile/william.gonwa/" target="_blank">Faculty Resume</a>',
+                unsafe_allow_html=True
+            )
+    with st.container():
+        wachi_cols = st.columns([1,6])
+        with wachi_cols[0]:
+            st.image("graphics/wachi.jpg")
+        with wachi_cols[1]:
+            st.header("Cocoro Wachi Undergraduate, Milwaukee School of Engineering.")
+            st.write("B.S. Computer Science Major, Mathematics Minor, UX Design Minor.")
+            st.write("Dwight & Dian Diercks School of Advanced Computing.")
+            st.write("+1(224)345-1255, wachic@msoe.edu")
+            with open("graphics/wachi_resume.pdf", "rb") as f:
+                pdf_bytes = f.read()
+            st.download_button("📥Download Resume", data=pdf_bytes, file_name="Cocoro Wachi Resume.pdf")
+    st.write("---")
+    with st.container():
+        st.header("Acknowledgement")
+        st.write("This undergraduate research and presentation at ICWMM2026 was made possible by the support of:")
+        st.write("- Dwight & Dian Diercks School of Advanced Computing")
+        st.write("- Civil and Architectural Engineering & Construction Management Department")
+        st.write("of Milwaukee School of Engineering.")
