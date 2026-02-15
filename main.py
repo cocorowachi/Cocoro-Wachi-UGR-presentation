@@ -356,7 +356,7 @@ if st.session_state.page == "authors":
     with st.container():
         wachi_cols = st.columns([1,6])
         with wachi_cols[0]:
-            st.image("graphics/wachi.jpg")
+            st.image("graphics/wachi.JPG")
         with wachi_cols[1]:
             st.header("Cocoro Wachi Undergraduate, Milwaukee School of Engineering.")
             st.write("B.S. Computer Science Major, Mathematics Minor, UX Design Minor.")
