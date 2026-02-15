@@ -14,7 +14,7 @@ st.set_page_config(
 if "_init_" not in st.session_state:
     st.session_state._init_ = True
 
-    path = "../Data/"
+    path = "Data/"
     temp = "Temperature.csv"
     sewer = "MMSD Sewer Flow Data.csv"
     precip = "MMSD Precipitation Raw Data.csv"
