@@ -6,7 +6,7 @@ from AutocalibrateTrad import AutocalibrateTrad
 import plotly.graph_objects as go
 from model import moving_avg_numba
 st.set_page_config(
-    page_title="MSOE UGR Sewer Dashboard",
+    page_title="MSOE Wachi Sewer Dashboard",
     page_icon="graphics/msoe_icon.png",
     layout="wide"
 )
