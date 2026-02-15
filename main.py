@@ -21,20 +21,19 @@ with title_cols[1]:
     st.write("Authors: Dr. William Gonwa P.E., Cocoro Wachi Undergraduate")
 cols = st.columns(3)
 with cols[0]:
-    if st.button("Dashboard", type="primary" if st.session_state.page == "dashboard" else "secondary", width="stretch"):
+    if st.button("Dashboard", type="primary" if st.session_state.page == "dashboard" else "secondary", disabled="_init_" not in st.session_state, width="stretch"):
         st.session_state.page = "dashboard"
         st.rerun()
 with cols[1]:
-    if st.button("Poster", type="primary" if st.session_state.page == "poster" else "secondary", width="stretch"):
+    if st.button("Poster", type="primary" if st.session_state.page == "poster" else "secondary", disabled="_init_" not in st.session_state, width="stretch"):
         st.session_state.page = "poster"
         st.rerun()
 with cols[2]:
-    if st.button("Authors", type="primary" if st.session_state.page == "authors" else "secondary", width="stretch"):
+    if st.button("Authors", type="primary" if st.session_state.page == "authors" else "secondary", disabled="_init_" not in st.session_state, width="stretch"):
         st.session_state.page = "authors"
         st.rerun()
 st.write("---")
 if "_init_" not in st.session_state:
-    st.session_state._init_ = True
 
     path = "Data/"
     temp = "Temperature.csv"
@@ -49,6 +48,8 @@ if "_init_" not in st.session_state:
     st.session_state.acaliT = AutocalibrateTrad(np.datetime64("2015-06-01T00:00"), np.datetime64("2020-01-31T23:00"), 64, sewer_df.read('MS0208 FlowMGD'), temperature_df.read("Temperature (F)"), precip_df.read("WS1201 Precip HourlyInches"))
     st.session_state.acali.optimize()
     st.session_state.acaliT.optimize()
+    st.session_state._init_ = True
+    st.rerun()
 
 events = [(np.datetime64("2016-10-15T14:00"),np.datetime64("2016-10-18T14:00")),
           (np.datetime64("2016-10-25T14:00"),np.datetime64("2016-10-29T22:00")),
@@ -84,53 +85,6 @@ plot_config = {
     'scrollZoom': True
 }
 if st.session_state.page == "dashboard":
-    #################################
-    # Diurnal
-    fig = go.Figure()
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.diurnal, name="seasonal", mode="lines", yaxis='y1'))
-    fig.update_layout(
-        title="Fast Response",
-        xaxis_title="Date Time",
-        yaxis=dict(title='Flow [MGD]',
-                    side='left',
-                    fixedrange=True),
-        yaxis2=dict(title='Flow [cfs]',
-                    side='right',
-                    showgrid=False,
-                    fixedrange=True),
-        template="plotly_dark",
-        hovermode='x unified', 
-        dragmode='pan'
-    )
-    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
-
-    ######################################
-    # obs disagg
-    fig = go.Figure()
-    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                                       name="precip", mode="lines", yaxis='y2'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],                line_color="blue", name="fast", mode="lines", yaxis='y1'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_slow_flow+acali.obs_seasonal)[s:e],                                    line_color="red", name="slow", mode="lines", yaxis='y1'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_seasonal[s:e],                                                          line_color="green", name="seasonal", mode="lines", yaxis='y1'))
-    # fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.diurnal+acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],  name="diurnal", mode="lines", yaxis='y1'))
-    fig.update_layout(
-        title="Responses",
-        xaxis_title="Date Time",
-        xaxis_showgrid=True,
-        yaxis=dict(title='Flow [MGD]',
-                    side='left',
-                    showgrid=True,
-                    fixedrange=True),
-        # yaxis2=dict(title='Flow [cfs]',
-        #             side='right',
-        #             showgrid=False,
-        #             fixedrange=True,
-        #             autorange="reversed"),
-        template="plotly_dark",
-        hovermode='x unified', 
-        dragmode='pan'
-    )
-    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
-
     ########################################
     # model fast
     st.write(acali.fast_param)
