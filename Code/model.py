@@ -40,11 +40,53 @@ def moving_avg_numba(arr: np.ndarray, length: int) -> np.ndarray:
 
     return out
 
+import numpy as np
+from numba import njit
+
+@njit
+def moving_min_numba(arr: np.ndarray, length: int) -> np.ndarray:
+    """
+    Trailing moving minimum with boundary shrink.
+    out[i] = min(arr[max(0, i-length+1) : i+1])
+    Runs in O(n) using a monotonic deque of indices.
+    """
+    n = arr.shape[0]
+    out = np.empty(n, dtype=np.float64)
+
+    # Deque implemented with a fixed-size array of indices
+    dq = np.empty(n, dtype=np.int64)
+    head = 0
+    tail = 0  # dq[head:tail] is the active deque
+
+    for i in range(n):
+        # 1) Evict indices that are out of the window (older than i-length+1)
+        left = i - length + 1
+        if left < 0:
+            left = 0
+        while head < tail and dq[head] < left:
+            head += 1
+
+        # 2) Maintain deque monotonic increasing by value:
+        # Pop from back while current value <= last value (so front is min)
+        ai = arr[i]
+        while head < tail and arr[dq[tail - 1]] >= ai:
+            tail -= 1
+
+        # 3) Push current index
+        dq[tail] = i
+        tail += 1
+
+        # 4) Front is min
+        out[i] = arr[dq[head]]
+
+    return out
 
 @njit
 def amm_3(temperature: np.ndarray,
                 precip: np.ndarray,
                 area: float,
+                PAT: int,
+                TAT: int,
                 RD: float,
                 HHL: float,
                 AMHL: float,
@@ -62,7 +104,7 @@ def amm_3(temperature: np.ndarray,
     k = 4.7964 / (30.0 - 70.0)
     x_0 = (70.0 + 30.0) / 2.0
 
-    MAT_t_df = moving_avg_numba(temperature, 24)
+    MAT_t_df = moving_avg_numba(temperature, TAT)
     # logistic-like seasonal curve
     n_mat = MAT_t_df.shape[0]
     SHCF_t = np.empty(n_mat, dtype=np.float64)
@@ -70,7 +112,7 @@ def amm_3(temperature: np.ndarray,
         SHCF_t[i] = (L / (1.0 + np.exp(-k * (MAT_t_df[i] - x_0)))) + cold_shcf - (11.0 / 12.0) * L
 
     # Level 2
-    MAP_t = moving_avg_numba(precip, 24)
+    MAP_t = moving_avg_numba(precip, PAT)
     AMRF = 0.5 ** (1.0 / AMHL)
     RW_nd = np.copy(SHCF_t)
 

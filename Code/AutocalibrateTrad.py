@@ -6,7 +6,7 @@ from model import amm_3, poly_model
 from scipy.stats import pearsonr, linregress
 from scipy.optimize import differential_evolution, minimize
 
-class Autocalibrate:
+class AutocalibrateTrad:
     def __init__(self, start: np.datetime64, end: np.datetime64, area: float, target: pd.Series, temperature: pd.Series, precip: pd.Series):
 
         self.datetime = np.arange(start, end, np.timedelta64(1, 'h'))
@@ -23,22 +23,8 @@ class Autocalibrate:
 
     def _isolate(self):
         self.diurnal = self._get_diurnal()
-        rdii = self.target_flow - self.diurnal
-        l3 = self._lyne_hollick(rdii, 5)
+        self.rdii = self.target_flow - self.diurnal
 
-        n_days = rdii.shape[0] // 24
-        rdii_daily = rdii[:n_days * 24].reshape(n_days, 24).mean(axis=1)
-        l15_daily = self._lyne_hollick(rdii_daily, 5)
-        ffill_l15 = np.repeat(l15_daily, 24)
-        extra = len(rdii) - len(ffill_l15)
-        pad = rdii[-extra:]
-        ffill_l15 = np.concat([ffill_l15, pad])
-
-
-        self.obs_seasonal = ffill_l15
-        self.obs_slow_flow = l3 - self.obs_seasonal
-        self.obs_fast_flow = self.target_flow - self.diurnal - self.obs_slow_flow - self.obs_seasonal
-    
     def _get_diurnal(self):
         flow = pd.Series(self.target_flow, index=self.datetime)
         # make a list of daily volume
@@ -151,15 +137,15 @@ class Autocalibrate:
         C_b = (2*stdev_obs*stdev_sim)/((stdev_obs**2)+(stdev_sim**2)+(stdev_obs-stdev_sim)**2) # 5
         return -r*C_b
         
-    def _fast_obj_amm(self, params):
-        target = self.obs_fast_flow
+    def _obj_amm(self, params):
+        target = self.rdii
         temp = self.temperature_signal
         precip = self.precip_signal
 
         area = self.area
         p1, p2, p3, p4, p5 = params
 
-        sim_flow = amm_3(temp, precip, area, 24, 12, p1, p2, p3, p4, p5)
+        sim_flow = amm_3(temp, precip, area, 24, 24, p1, p2, p3, p4, p5)
 
         mask = ~np.isnan(target) & ~np.isnan(sim_flow)
         target = target[mask]
@@ -175,81 +161,20 @@ class Autocalibrate:
         # fast flow cali only looks at tops of peak
         median = np.percentile(target, 70)
         mask = (target>median) & (sim_flow>median)
-        target = target[mask]
-        sim_flow = sim_flow[mask]
-
-        out = self._lin_score(target, sim_flow)
-        return out
-
-    def _slow_obj_amm(self, params):
-        target = self.obs_slow_flow
-        temp = self.temperature_signal
-        precip = self.precip_signal
-
-        area = self.area
-        p1, p2, p3, p4, p5 = params
-
-        sim_flow = amm_3(temp, precip, area, 24*7, 12, p1, p2, p3, p4, p5)
-
-        mask = ~np.isnan(target) & ~np.isnan(sim_flow)
-        target = target[mask]
-        sim_flow = sim_flow[mask]
-        
-        if len(target) < 2 or len(sim_flow) < 2:
-            return 1e9   # or any large positive penalty
-
-        # If shapes mismatch, truncate or return penalty
-        if len(target) != len(sim_flow):
-            return 1e9
-
-        # slow flow cali looks at all data
-        median = np.percentile(target, 50)
-        mask = (target>median) & (sim_flow>median)
-        target = target[mask]
-        sim_flow = sim_flow[mask]
-
-        out = self._lin_score(target, sim_flow)
-        return out
-
-    def _seasonal_obj_amm(self, params):
-        target = self.obs_slow_flow
-        temp = self.temperature_signal
-        precip = self.precip_signal
-
-        area = self.area
-        p1, p2, p3, p4, p5 = params
-
-        sim_flow = amm_3(temp, precip, area, 24*50, 24*50, p1, p2, p3, p4, p5)
-
-        mask = ~np.isnan(target) & ~np.isnan(sim_flow)
-        target = target[mask]
-        sim_flow = sim_flow[mask]
-        
-        if len(target) < 2 or len(sim_flow) < 2:
-            return 1e9   # or any large positive penalty
-
-        # If shapes mismatch, truncate or return penalty
-        if len(target) != len(sim_flow):
-            return 1e9
-
-        # slow flow cali looks at all data
-        # median = np.percentile(target, 0)
-        # mask = (target>median) & (sim_flow>median)
         # target = target[mask]
         # sim_flow = sim_flow[mask]
 
         out = self._lin_score(target, sim_flow)
         return out
-    
+
     def optimize(self):
         ###########################
         ### Fast Cali
         indicator = self.temperature_signal
         precip = self.precip_signal
                 # RD,      HHL,      AMHL,     hot_shcf,delta_shcf
-        bounds = [(1e-6, 1), (1e-6, 10), (1e-6, 100), (0, 10), (0, 10)]
-            
-        global_res = differential_evolution(self._fast_obj_amm, 
+        bounds = [(1e-6, 10), (1e-6, 50), (1e-6, 100), (0, 10), (0, 10)]
+        global_res = differential_evolution(self._obj_amm, 
                                             bounds=bounds, 
                                             maxiter=50,
                                             polish=False,
@@ -258,7 +183,7 @@ class Autocalibrate:
                                             mutation=(0.25, 0.5),
                                             strategy='best1bin'
                                             )
-        result = minimize(self._fast_obj_amm, 
+        result = minimize(self._obj_amm, 
                         bounds=bounds, 
                         x0=global_res.x,
                         method='Nelder-Mead',
@@ -266,66 +191,7 @@ class Autocalibrate:
                                 'maxiter':100},
                         )
         p1, p2, p3, p4, p5 = result.x
-        self.sim_fast_flow = amm_3(indicator, precip, self.area, 24, 12, p1, p2, p3, p4, p5)
-        self.fast_param = result.x
+        self.sim_rdii = amm_3(indicator, precip, self.area, 24, 24, p1, p2, p3, p4, p5)
+        self.rdii_param = result.x
         st.write("fast done")
-
-        #####################################
-        ### Slow Cali
-        indicator = self.temperature_signal
-        precip = self.precip_signal
-                # RD,      HHL,      AMHL,     hot_shcf,delta_shcf
-        bounds = [(0, 50), (1e-6, 100), (1e-6, 100), (0.5, 10), (0.01, 10)]
-            
-        global_res = differential_evolution(self._slow_obj_amm, 
-                                            bounds=bounds, 
-                                            maxiter=50,
-                                            polish=False,
-                                            popsize=3,
-                                            recombination=0.8,
-                                            mutation=(0.25, 0.5),
-                                            strategy='best1bin'
-                                            )
-        result = minimize(self._slow_obj_amm, 
-                        bounds=bounds, 
-                        x0=global_res.x,
-                        method='Nelder-Mead',
-                        options={#'ftol':1.0e-05, #scipy default is 2.2e-09
-                                'maxiter':100},
-                        )
-        p1, p2, p3, p4, p5 = result.x
-        self.sim_slow_flow = amm_3(indicator, precip, self.area, 24*3, 24, p1, p2, p3, p4, p5)
-        self.slow_param = result.x
-        st.write("slow done")
-
-        ##############################
-        ### Seasonal Cali
-        indicator = self.temperature_signal
-        precip = self.precip_signal
-                # RD,      HHL,      AMHL,     hot_shcf,delta_shcf
-        bounds = [(0, 1), (50, 400), (10, 400), (0, 2), (0, 2)]
-            
-        global_res = differential_evolution(self._seasonal_obj_amm, 
-                                            bounds=bounds, 
-                                            maxiter=50,
-                                            polish=False,
-                                            popsize=3,
-                                            recombination=0.8,
-                                            mutation=(0.25, 0.5),
-                                            strategy='best1bin'
-                                            )
-        result = minimize(self._seasonal_obj_amm, 
-                        bounds=bounds, 
-                        x0=global_res.x,
-                        method='Nelder-Mead',
-                        options={#'ftol':1.0e-05, #scipy default is 2.2e-09
-                                'maxiter':100},
-                        )
-        p1, p2, p3, p4, p5 = result.x
-        self.sim_seasonal_flow = amm_3(indicator, precip, self.area, 24*40, 24*40, p1, p2, p3, p4, p5)
-        self.seasonal_param = result.x
-        st.write("seasonal done")
         
-    def get_sim_flow(self):
-        # return self.datetime, self.diurnal, self.sim_fast_flow, self.sim_slow_flow
-        return self.datetime, self.diurnal, self.sim_fast_flow, self.sim_slow_flow, self.sim_seasonal_flow
