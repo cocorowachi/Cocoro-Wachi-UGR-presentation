@@ -5,11 +5,13 @@ from Autocalibrate import Autocalibrate
 from AutocalibrateTrad import AutocalibrateTrad
 import plotly.graph_objects as go
 from model import moving_avg_numba
+
 st.set_page_config(
     page_title="MSOE Wachi Sewer Dashboard",
     page_icon="graphics/msoe_icon.png",
     layout="wide"
 )
+
 if "_init_" not in st.session_state:
     st.session_state._init_ = False
     st.session_state.page = "dashboard"
@@ -340,3 +342,39 @@ if st.session_state.page == "authors":
         st.write("- Dwight & Dian Diercks School of Advanced Computing")
         st.write("- Civil and Architectural Engineering & Construction Management Department")
         st.write("of Milwaukee School of Engineering.")
+
+    # used for export data for dr gonwa for excel useage
+    # import pandas as pd
+    # df = pd.DataFrame({
+    #     "datetime": acali.datetime,
+    #     "MS0208 Total Flow MGD": acali.target_flow
+    # })
+    # df.to_csv("hourly_MS0208_total.csv", index=False)
+
+    # df = pd.DataFrame({
+    #     "datetime": acali.datetime,
+    #     "MS0208 RDII Flow MGD": acali.target_flow - acali.diurnal
+    # })
+    # df.to_csv("hourly_MS0208_rdii.csv", index=False)
+
+    # x = acali.datetime
+    # y = acali.target_flow
+    # n_days = x.shape[0] // 24
+    # x_daily = x[:n_days * 24].reshape(n_days, 24)[:, 0]
+    # y_daily = y[:n_days * 24].reshape(n_days, 24)[:, 0]
+    # df = pd.DataFrame({
+    #     "datetime": x_daily,
+    #     "MS0208 Total Flow MGD": y_daily
+    # })
+    # df.to_csv("daily_MS0208_total.csv", index=False)
+
+    # x = acali.datetime
+    # y = acali.target_flow - acali.diurnal
+    # n_days = x.shape[0] // 24
+    # x_daily = x[:n_days * 24].reshape(n_days, 24)[:, 0]
+    # y_daily = y[:n_days * 24].reshape(n_days, 24)[:, 0]
+    # df = pd.DataFrame({
+    #     "datetime": x_daily,
+    #     "MS0208 Total Flow MGD": y_daily
+    # })
+    # df.to_csv("daily_MS0208_rdii.csv", index=False)
