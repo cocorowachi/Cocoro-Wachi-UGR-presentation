@@ -332,7 +332,7 @@ if st.session_state.page == "authors":
             st.write("B.S. Computer Science Major, Mathematics Minor, UX Design Minor.")
             st.write("Dwight & Dian Diercks School of Advanced Computing.")
             st.write("+1(224)345-1255, wachic@msoe.edu")
-            with open("graphics/wachi.pdf", "rb") as f:
+            with open("graphics/wachi_resume.pdf", "rb") as f:
                 pdf_bytes = f.read()
             st.download_button("Download Resume", data=pdf_bytes, file_name="Cocoro Wachi Resume.pdf")
     st.write("---")
@@ -342,7 +342,6 @@ if st.session_state.page == "authors":
         st.write("- Dwight & Dian Diercks School of Advanced Computing")
         st.write("- Civil and Architectural Engineering & Construction Management Department")
         st.write("of Milwaukee School of Engineering.")
-
     # used for export data for dr gonwa for excel useage
     # import pandas as pd
     # df = pd.DataFrame({
