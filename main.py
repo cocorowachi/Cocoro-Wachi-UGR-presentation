@@ -32,7 +32,7 @@ with topbutton_cols[1]:
         st.session_state.page = "poster"
         st.rerun()
 with topbutton_cols[2]:
-    if st.button("Authors", type="primary" if st.session_state.page == "authors" else "secondary", disabled=not st.session_state._init_, width="stretch"):
+    if st.button("Authors/About the Project", type="primary" if st.session_state.page == "authors" else "secondary", disabled=not st.session_state._init_, width="stretch"):
         st.session_state.page = "authors"
         st.rerun()
 st.write("---")
@@ -45,12 +45,12 @@ if not st.session_state._init_:
     temperature_df = Data(path + temp)
     sewer_df = Data(path + sewer)
     precip_df = Data(path + precip)
-
     st.session_state.acali = Autocalibrate(np.datetime64("2015-06-01T00:00"), np.datetime64("2020-01-31T23:00"), 64, sewer_df.read('MS0208 FlowMGD'), temperature_df.read("Temperature (F)"), precip_df.read("WS1201 Precip HourlyInches"))
     st.session_state.acaliT = AutocalibrateTrad(np.datetime64("2015-06-01T00:00"), np.datetime64("2020-01-31T23:00"), 64, sewer_df.read('MS0208 FlowMGD'), temperature_df.read("Temperature (F)"), precip_df.read("WS1201 Precip HourlyInches"))
-    st.session_state.acali.optimize()
-    st.session_state.acaliT.optimize()
-    st.session_state._init_ = True
+    with st.spinner("Initializing Model"):
+        st.session_state.acali.optimize()
+        st.session_state.acaliT.optimize()
+        st.session_state._init_ = True
     st.rerun()
 
 events = [(np.datetime64("2016-10-15T14:00"),np.datetime64("2016-10-18T14:00")),
@@ -87,115 +87,121 @@ plot_config = {
     'scrollZoom': True
 }
 if st.session_state.page == "dashboard":
-    
-    ######################################
-    # obs disagg
-    fig = go.Figure()
-    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                                       name="precip", mode="lines", yaxis='y2'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],                line_color="blue", name="fast", mode="lines", yaxis='y1'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_slow_flow+acali.obs_seasonal)[s:e],                                    line_color="red", name="slow", mode="lines", yaxis='y1'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_seasonal[s:e],                                                          line_color="green", name="seasonal", mode="lines", yaxis='y1'))
-    # fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.diurnal+acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],  name="diurnal", mode="lines", yaxis='y1'))
-    fig.update_layout(
-        title="Responses",
-        xaxis=dict(title="Date Time",
-                   showgrid=True,
-                   fixedrange=False),
-        yaxis=dict(title='Flow [MGD]',
-                    side='left',
+    with st.container():
+            
+        ######################################
+        # obs disagg
+        fig = go.Figure()
+        # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                                       name="precip", mode="lines", yaxis='y2'))
+        fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],                line_color="blue", name="Seasonal+Slow+Fast Flow", mode="lines", yaxis='y1'))
+        fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_slow_flow+acali.obs_seasonal)[s:e],                                    line_color="red", name="Seasonal+Slow Flow", mode="lines", yaxis='y1'))
+        fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_seasonal[s:e],                                                          line_color="green", name="Seasonal Flow", mode="lines", yaxis='y1'))
+        # fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.diurnal+acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],  name="diurnal", mode="lines", yaxis='y1'))
+        fig.update_layout(
+            title="Disaggregated Signal (Diurnal Excluded)",
+            xaxis=dict(title="Date Time",
                     showgrid=True,
-                    fixedrange=True),
-        template="plotly_dark",
-        hovermode='x unified', 
-        dragmode='pan'
-    )
-    fig.update_yaxes(range=[-0.5, 4])
-    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+                    fixedrange=False),
+            yaxis=dict(title='Flow [MGD]',
+                        side='left',
+                        showgrid=True,
+                        fixedrange=True),
+            template="plotly_dark",
+            hovermode='x unified', 
+            dragmode='pan'
+        )
+        fig.update_yaxes(range=[-0.5, 4])
+        st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+        st.write("steps of disaggregation, put excel file here as well")
+    with st.container():
+            
+        ########################################
+        # model fast
+        fig = go.Figure()
+        # fig.add_trace(go.Scattergl(x=datetime[2:], y=acali.precip_signal[2:],   line_color="green", name="precip", mode="lines", yaxis='y2'))
+        fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_fast_flow[s:e],   line_color="blue", name="Observed Fast Flow", mode="lines", yaxis='y1'))
+        fig.add_trace(go.Scattergl(x=datetime[s:e], y=sim_fast[s:e],              line_color="red", name="Simulated Fast Flow", mode="lines", yaxis='y1'))
+        fig.update_layout(
+            title="Fast Response Observed and Simulated Signal",
+            xaxis=dict(title="Date Time",
+                    showgrid=True,
+                    fixedrange=False),
+            yaxis=dict(title='Flow [MGD]',
+                        side='left',
+                        fixedrange=True),
+            template="plotly_dark",
+            hovermode='x unified', 
+            dragmode='pan'
+        )
+        fig.update_yaxes(range=[-0.5, 4])
+        st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
-    ########################################
-    # model fast
-    fig = go.Figure()
-    # fig.add_trace(go.Scattergl(x=datetime[2:], y=acali.precip_signal[2:],   line_color="green", name="precip", mode="lines", yaxis='y2'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_fast_flow[s:e],   line_color="blue", name="obs", mode="lines", yaxis='y1'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=sim_fast[s:e],              line_color="red", name="sim", mode="lines", yaxis='y1'))
-    fig.update_layout(
-        title="Fast Response",
-        xaxis=dict(title="Date Time",
-                showgrid=True,
-                fixedrange=False),
-        yaxis=dict(title='Flow [MGD]',
-                    side='left',
-                    fixedrange=True),
-        template="plotly_dark",
-        hovermode='x unified', 
-        dragmode='pan'
-    )
-    fig.update_yaxes(range=[-0.5, 4])
-    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+    with st.container():
+        ###############################
+        # Model slow
+        fig = go.Figure()
+        # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,   line_color="green", name="precip", mode="lines", yaxis='y2'))
+        fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_slow_flow[s:e],   line_color="blue", name="Observed Slow Flow", mode="lines", yaxis='y1'))
+        fig.add_trace(go.Scattergl(x=datetime[s:e], y=sim_slow[s:e],              line_color="red", name="Simulated Slow Flow", mode="lines", yaxis='y1'))
+        fig.update_layout(
+            title="Slow Response Observed and Simulated Signal",
+            xaxis=dict(title="Date Time",
+                    showgrid=True,
+                    fixedrange=False),
+            yaxis=dict(title='Flow [MGD]',
+                        side='left',
+                        fixedrange=True),
+            template="plotly_dark",
+            hovermode='x unified', 
+            dragmode='pan'
+        )
+        fig.update_yaxes(range=[-0.5, 4])
+        st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
-    ###############################
-    # Model slow
-    fig = go.Figure()
-    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,   line_color="green", name="precip", mode="lines", yaxis='y2'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_slow_flow[s:e],   line_color="blue", name="obs", mode="lines", yaxis='y1'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=sim_slow[s:e],              line_color="red", name="sim", mode="lines", yaxis='y1'))
-    fig.update_layout(
-        title="Slow Response",
-        xaxis=dict(title="Date Time",
-                showgrid=True,
-                fixedrange=False),
-        yaxis=dict(title='Flow [MGD]',
-                    side='left',
-                    fixedrange=True),
-        template="plotly_dark",
-        hovermode='x unified', 
-        dragmode='pan'
-    )
-    fig.update_yaxes(range=[-0.5, 4])
-    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+    with st.container():
+        ##############################
+        # model seasonal
+        fig = go.Figure()
+        # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,   line_color="green", name="precip", mode="lines", yaxis='y2'))
+        fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_seasonal[s:e],    line_color="blue", name="Observed Seasonal Flow", mode="lines", yaxis='y1'))
+        fig.add_trace(go.Scattergl(x=datetime[s:e], y=sim_seasonal[s:e],          line_color="red", name="Simulated Seasonal Flow", mode="lines", yaxis='y1'))
+        fig.update_layout(
+            title="Seasonal Response Observed and Simulated Signal",
+            xaxis=dict(title="Date Time",
+                    showgrid=True,
+                    fixedrange=False),
+            yaxis=dict(title='Flow [MGD]',
+                        side='left',
+                        fixedrange=True),
+            template="plotly_dark",
+            hovermode='x unified', 
+            dragmode='pan'
+        )
+        fig.update_yaxes(range=[-0.5, 4])
+        st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
-    ##############################
-    # model seasonal
-    fig = go.Figure()
-    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,   line_color="green", name="precip", mode="lines", yaxis='y2'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.obs_seasonal[s:e],    line_color="blue", name="obs", mode="lines", yaxis='y1'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=sim_seasonal[s:e],          line_color="red", name="sim", mode="lines", yaxis='y1'))
-    fig.update_layout(
-        title="Seasonal Response",
-        xaxis=dict(title="Date Time",
-                showgrid=True,
-                fixedrange=False),
-        yaxis=dict(title='Flow [MGD]',
-                    side='left',
-                    fixedrange=True),
-        template="plotly_dark",
-        hovermode='x unified', 
-        dragmode='pan'
-    )
-    fig.update_yaxes(range=[-0.5, 4])
-    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+    with st.container():
+            
+        #############################3
+        # combine
+        fig = go.Figure()
+        # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                           line_color="green", name="precip", mode="lines", yaxis='y2'))
+        # fig.add_trace(go.Scattergl(x=datetime[s:e], y=acaliT.sim_rdii[s:e],                                                     line_color="green", name="observed", mode="lines", yaxis='y1'))
+        fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],    line_color="blue", name="Observed Flow", mode="lines", yaxis='y1'))
+        fig.add_trace(go.Scattergl(x=datetime[s:e], y=(sim_fast+sim_slow+sim_seasonal)[s:e],                          line_color="red", name="Simulated Flow", mode="lines", yaxis='y1'))
 
-
-    #############################3
-    # combine
-    fig = go.Figure()
-    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                           line_color="green", name="precip", mode="lines", yaxis='y2'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=acaliT.sim_rdii[s:e],                                                     line_color="green", name="observed", mode="lines", yaxis='y1'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],    line_color="blue", name="observed", mode="lines", yaxis='y1'))
-    fig.add_trace(go.Scattergl(x=datetime[s:e], y=(sim_fast+sim_slow+sim_seasonal)[s:e],                          line_color="red", name="simulated", mode="lines", yaxis='y1'))
-
-    fig.update_layout(
-        title="combine Response",
-        xaxis_title="Date Time",
-        xaxis_showgrid=True,
-        yaxis=dict(title='Flow [MGD]',
-                    side='left',
-                    fixedrange=True),
-        hovermode='x unified', 
-        dragmode='pan'
-    )
-    fig.update_yaxes(range=[-0.5, 4])
-    st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
+        fig.update_layout(
+            title="Aggregate Observed and Simulated Signal",
+            xaxis_title="Date Time",
+            xaxis_showgrid=True,
+            yaxis=dict(title='Flow [MGD]',
+                        side='left',
+                        fixedrange=True),
+            hovermode='x unified', 
+            dragmode='pan'
+        )
+        fig.update_yaxes(range=[-0.5, 4])
+        st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
     ####################
     # Event OTO
@@ -341,7 +347,11 @@ if st.session_state.page == "authors":
         st.write("This undergraduate research and presentation at ICWMM2026 was made possible by the support of:")
         st.write("- Dwight & Dian Diercks School of Advanced Computing")
         st.write("- Civil and Architectural Engineering & Construction Management Department")
-        st.write("of Milwaukee School of Engineering.")
+        # st.write("of Milwaukee School of Engineering.")
+        st.markdown(
+            'of <a href="https://www.msoe.edu/" target="_blank">Milwaukee School of Engineering</a>',
+            unsafe_allow_html=True
+        )
     # used for export data for dr gonwa for excel useage
     # import pandas as pd
     # df = pd.DataFrame({

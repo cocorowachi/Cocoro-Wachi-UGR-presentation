@@ -268,7 +268,6 @@ class Autocalibrate:
         p1, p2, p3, p4, p5 = result.x
         self.sim_fast_flow = amm_3(indicator, precip, self.area, 24, 12, p1, p2, p3, p4, p5)
         self.fast_param = result.x
-        st.write("fast done")
 
         #####################################
         ### Slow Cali
@@ -296,7 +295,6 @@ class Autocalibrate:
         p1, p2, p3, p4, p5 = result.x
         self.sim_slow_flow = amm_3(indicator, precip, self.area, 24*3, 24, p1, p2, p3, p4, p5)
         self.slow_param = result.x
-        st.write("slow done")
 
         ##############################
         ### Seasonal Cali
@@ -324,7 +322,6 @@ class Autocalibrate:
         p1, p2, p3, p4, p5 = result.x
         self.sim_seasonal_flow = amm_3(indicator, precip, self.area, 24*40, 24*40, p1, p2, p3, p4, p5)
         self.seasonal_param = result.x
-        st.write("seasonal done")
         
     def get_sim_flow(self):
         # return self.datetime, self.diurnal, self.sim_fast_flow, self.sim_slow_flow
