@@ -85,7 +85,7 @@ if st.session_state.page == "dashboard":
     with st.container():
             
         ######################################
-        # obs disagg
+        # obs disagg 
         fig = go.Figure()
         # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                                       name="precip", mode="lines", yaxis='y2'))
         fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],                line_color="blue", name="Seasonal+Slow+Fast Flow", mode="lines", yaxis='y1'))
@@ -195,6 +195,7 @@ if st.session_state.page == "dashboard":
             hovermode='x unified', 
             dragmode='pan'
         )
+        
         fig.update_yaxes(range=[-0.5, 4])
         st.plotly_chart(fig, config={'scrollZoom': True}, use_container_width=True)
 
