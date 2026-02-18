@@ -11,7 +11,6 @@ def moving_avg_numba(arr: np.ndarray, length: int) -> np.ndarray:
     n = arr.shape[0]
     out = np.empty(n, dtype=np.float64)
 
-    # prefix sum: ps[0] = 0, ps[i] = sum(arr[:i])
     ps = np.zeros(n + 1, dtype=np.float64)
     for i in range(n):
         ps[i+1] = ps[i] + arr[i]
@@ -32,16 +31,13 @@ def moving_avg_numba(arr: np.ndarray, length: int) -> np.ndarray:
             start = max(0, end - length)  # adjust start so window length is length when possible
         window_sum = ps[end] - ps[start]
         window_len = end - start
-        # avoid division by zero (shouldn't happen)
+
         if window_len == 0:
             out[i] = 0.0
         else:
             out[i] = window_sum / window_len
 
     return out
-
-import numpy as np
-from numba import njit
 
 @njit
 def moving_min_numba(arr: np.ndarray, length: int) -> np.ndarray:
@@ -59,26 +55,21 @@ def moving_min_numba(arr: np.ndarray, length: int) -> np.ndarray:
     tail = 0  # dq[head:tail] is the active deque
 
     for i in range(n):
-        # 1) Evict indices that are out of the window (older than i-length+1)
+        # Remove indices that are out of the window (older than i-length+1)
         left = i - length + 1
         if left < 0:
             left = 0
         while head < tail and dq[head] < left:
             head += 1
 
-        # 2) Maintain deque monotonic increasing by value:
-        # Pop from back while current value <= last value (so front is min)
         ai = arr[i]
         while head < tail and arr[dq[tail - 1]] >= ai:
             tail -= 1
 
-        # 3) Push current index
         dq[tail] = i
         tail += 1
 
-        # 4) Front is min
         out[i] = arr[dq[head]]
-
     return out
 
 @njit
@@ -116,7 +107,7 @@ def amm_3(temperature: np.ndarray,
     AMRF = 0.5 ** (1.0 / AMHL)
     RW_nd = np.copy(SHCF_t)
 
-    # guard for AMRF==1 (shouldn't happen with given formula) but avoid division by zero
+    # guard for AMRF==1
     if AMRF == 1.0:
         denom = 1e-12
     else:

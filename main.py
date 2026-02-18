@@ -2,9 +2,7 @@ import streamlit as st
 import numpy as np
 from Data import Data
 from Autocalibrate import Autocalibrate
-from AutocalibrateTrad import AutocalibrateTrad
 import plotly.graph_objects as go
-from model import moving_avg_numba
 
 st.set_page_config(
     page_title="MSOE Wachi Sewer Dashboard",
@@ -46,10 +44,8 @@ if not st.session_state._init_:
     sewer_df = Data(path + sewer)
     precip_df = Data(path + precip)
     st.session_state.acali = Autocalibrate(np.datetime64("2015-06-01T00:00"), np.datetime64("2020-01-31T23:00"), 64, sewer_df.read('MS0208 FlowMGD'), temperature_df.read("Temperature (F)"), precip_df.read("WS1201 Precip HourlyInches"))
-    st.session_state.acaliT = AutocalibrateTrad(np.datetime64("2015-06-01T00:00"), np.datetime64("2020-01-31T23:00"), 64, sewer_df.read('MS0208 FlowMGD'), temperature_df.read("Temperature (F)"), precip_df.read("WS1201 Precip HourlyInches"))
     with st.spinner("Initializing Model"):
         st.session_state.acali.optimize()
-        st.session_state.acaliT.optimize()
         st.session_state._init_ = True
     st.rerun()
 
@@ -77,7 +73,6 @@ events = [(np.datetime64("2016-10-15T14:00"),np.datetime64("2016-10-18T14:00")),
           (np.datetime64("2018-05-20T06:00"),np.datetime64("2018-05-25T02:00")),
           (np.datetime64("2017-01-19T10:00"),np.datetime64("2017-01-19T22:00"))]
 acali=st.session_state.acali
-acaliT=st.session_state.acaliT
 datetime, diurnal, sim_fast, sim_slow, sim_seasonal = acali.get_sim_flow()
 s, e = 11200, 26700
 # datetime = datetime[s:e]
@@ -186,7 +181,7 @@ if st.session_state.page == "dashboard":
         # combine
         fig = go.Figure()
         # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                           line_color="green", name="precip", mode="lines", yaxis='y2'))
-        # fig.add_trace(go.Scattergl(x=datetime[s:e], y=acaliT.sim_rdii[s:e],                                                     line_color="green", name="observed", mode="lines", yaxis='y1'))
+        fig.add_trace(go.Scattergl(x=datetime[s:e], y=acali.sim_rdii[s:e],                                                     line_color="green", name="observed", mode="lines", yaxis='y1'))
         fig.add_trace(go.Scattergl(x=datetime[s:e], y=(acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)[s:e],    line_color="blue", name="Observed Flow", mode="lines", yaxis='y1'))
         fig.add_trace(go.Scattergl(x=datetime[s:e], y=(sim_fast+sim_slow+sim_seasonal)[s:e],                          line_color="red", name="Simulated Flow", mode="lines", yaxis='y1'))
 
@@ -207,7 +202,7 @@ if st.session_state.page == "dashboard":
     # Event OTO
     obs_rdii = (acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)
     sim_rdii = (sim_fast+sim_slow+sim_seasonal)
-    simT_rdii = acaliT.sim_rdii
+    simT_rdii = acali.sim_rdii
 
     obs_events = []
     sim_events = []
@@ -255,9 +250,9 @@ if st.session_state.page == "dashboard":
 
     ####################
     # peak vol oto
-    obs_rdii = (acali.obs_fast_flow+acali.obs_slow_flow+acali.obs_seasonal)
+    obs_rdii = (acali.obs_rdii)
     sim_rdii = (sim_fast+sim_slow+sim_seasonal)
-    simT_rdii = acaliT.sim_rdii
+    simT_rdii = acali.sim_rdii
 
     obs_top20 = []
     sim_top20 = []
@@ -274,7 +269,7 @@ if st.session_state.page == "dashboard":
     simT_top20 = np.array(simT_top20)
 
     fig = go.Figure()
-    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal,                                           line_color="green", name="precip", mode="lines", yaxis='y2'))
+    # fig.add_trace(go.Scattergl(x=datetime, y=acali.precip_signal, line_color="green", name="precip", mode="lines", yaxis='y2'))
     fig.add_trace(go.Scattergl(x=obs_top20, y=sim_top20, line_color="blue", name="observed", mode="markers", marker_size=10, yaxis='y1'))
     fig.add_trace(go.Scattergl(x=obs_top20, y=simT_top20, line_color="red", name="observed", mode="markers", marker_size=10, yaxis='y1'))
 

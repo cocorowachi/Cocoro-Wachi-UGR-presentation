@@ -1,9 +1,8 @@
 import numpy as np
-import streamlit as st
 import pandas as pd
 from numba import njit
-from model import amm_3, poly_model
-from scipy.stats import pearsonr, linregress
+from model import amm_3
+from scipy.stats import pearsonr
 from scipy.optimize import differential_evolution, minimize
 
 class Autocalibrate:
@@ -38,6 +37,7 @@ class Autocalibrate:
         self.obs_seasonal = ffill_l15
         self.obs_slow_flow = l3 - self.obs_seasonal
         self.obs_fast_flow = self.target_flow - self.diurnal - self.obs_slow_flow - self.obs_seasonal
+        self.obs_rdii = self.obs_fast_flow + self.obs_slow_flow + self.obs_seasonal
     
     def _get_diurnal(self):
         flow = pd.Series(self.target_flow, index=self.datetime)
@@ -71,7 +71,7 @@ class Autocalibrate:
             """
             n = data.shape[0]
             out = np.empty_like(data)
-            oneplusalphahalf = (1 + alpha) / 2
+            alpha_const = (1 + alpha) / 2
 
             out[0] = data[0]
             prev_out = data[0]
@@ -85,7 +85,7 @@ class Autocalibrate:
                     continue
 
                 term1 = alpha * (prev_data - prev_out)
-                term2 = oneplusalphahalf * (cur_data - prev_data)
+                term2 = alpha_const * (cur_data - prev_data)
                 cur_out = cur_data - max(term1 + term2, 0)
 
                 if np.isnan(cur_out) or cur_out <= 0:
@@ -166,9 +166,8 @@ class Autocalibrate:
         sim_flow = sim_flow[mask]
         
         if len(target) < 2 or len(sim_flow) < 2:
-            return 1e9   # or any large positive penalty
+            return 1e9
 
-        # If shapes mismatch, truncate or return penalty
         if len(target) != len(sim_flow):
             return 1e9
         
@@ -196,13 +195,12 @@ class Autocalibrate:
         sim_flow = sim_flow[mask]
         
         if len(target) < 2 or len(sim_flow) < 2:
-            return 1e9   # or any large positive penalty
+            return 1e9 
 
-        # If shapes mismatch, truncate or return penalty
         if len(target) != len(sim_flow):
             return 1e9
 
-        # slow flow cali looks at all data
+        # slow flow cali looks at top50%
         median = np.percentile(target, 50)
         mask = (target>median) & (sim_flow>median)
         target = target[mask]
@@ -226,13 +224,12 @@ class Autocalibrate:
         sim_flow = sim_flow[mask]
         
         if len(target) < 2 or len(sim_flow) < 2:
-            return 1e9   # or any large positive penalty
+            return 1e9 
 
-        # If shapes mismatch, truncate or return penalty
         if len(target) != len(sim_flow):
             return 1e9
 
-        # slow flow cali looks at all data
+        # seasonal flow cali looks at all data
         # median = np.percentile(target, 0)
         # mask = (target>median) & (sim_flow>median)
         # target = target[mask]
@@ -240,6 +237,30 @@ class Autocalibrate:
 
         out = self._lin_score(target, sim_flow)
         return out
+    
+    def _rdii_obj_amm(self, params):
+        target = self.obs_rdii
+        temp = self.temperature_signal
+        precip = self.precip_signal
+
+        area = self.area
+        p1, p2, p3, p4, p5 = params
+
+        sim_flow = amm_3(temp, precip, area, 24*7, 12, p1, p2, p3, p4, p5)
+
+        mask = ~np.isnan(target) & ~np.isnan(sim_flow)
+        target = target[mask]
+        sim_flow = sim_flow[mask]
+        
+        if len(target) < 2 or len(sim_flow) < 2:
+            return 1e9 
+
+        if len(target) != len(sim_flow):
+            return 1e9
+
+        out = self._lin_score(target, sim_flow)
+        return out
+
     
     def optimize(self):
         ###########################
@@ -254,17 +275,14 @@ class Autocalibrate:
                                             maxiter=50,
                                             polish=False,
                                             popsize=3,
-                                            recombination=0.8,
-                                            mutation=(0.25, 0.5),
                                             strategy='best1bin'
                                             )
         result = minimize(self._fast_obj_amm, 
-                        bounds=bounds, 
-                        x0=global_res.x,
-                        method='Nelder-Mead',
-                        options={#'ftol':1.0e-05, #scipy default is 2.2e-09
-                                'maxiter':100},
-                        )
+                          bounds=bounds, 
+                          x0=global_res.x,
+                          method='Nelder-Mead',
+                          options={'maxiter':100},
+                          )
         p1, p2, p3, p4, p5 = result.x
         self.sim_fast_flow = amm_3(indicator, precip, self.area, 24, 12, p1, p2, p3, p4, p5)
         self.fast_param = result.x
@@ -281,17 +299,14 @@ class Autocalibrate:
                                             maxiter=50,
                                             polish=False,
                                             popsize=3,
-                                            recombination=0.8,
-                                            mutation=(0.25, 0.5),
                                             strategy='best1bin'
                                             )
         result = minimize(self._slow_obj_amm, 
-                        bounds=bounds, 
-                        x0=global_res.x,
-                        method='Nelder-Mead',
-                        options={#'ftol':1.0e-05, #scipy default is 2.2e-09
-                                'maxiter':100},
-                        )
+                          bounds=bounds, 
+                          x0=global_res.x,
+                          method='Nelder-Mead',
+                          options={'maxiter':100},
+                          )
         p1, p2, p3, p4, p5 = result.x
         self.sim_slow_flow = amm_3(indicator, precip, self.area, 24*3, 24, p1, p2, p3, p4, p5)
         self.slow_param = result.x
@@ -308,20 +323,42 @@ class Autocalibrate:
                                             maxiter=50,
                                             polish=False,
                                             popsize=3,
-                                            recombination=0.8,
-                                            mutation=(0.25, 0.5),
                                             strategy='best1bin'
                                             )
         result = minimize(self._seasonal_obj_amm, 
-                        bounds=bounds, 
-                        x0=global_res.x,
-                        method='Nelder-Mead',
-                        options={#'ftol':1.0e-05, #scipy default is 2.2e-09
-                                'maxiter':100},
-                        )
+                          bounds=bounds, 
+                          x0=global_res.x,
+                          method='Nelder-Mead',
+                          options={'maxiter':100},
+                          )
         p1, p2, p3, p4, p5 = result.x
         self.sim_seasonal_flow = amm_3(indicator, precip, self.area, 24*40, 24*40, p1, p2, p3, p4, p5)
         self.seasonal_param = result.x
+
+        #########
+        # rdii combined cali
+        indicator = self.temperature_signal
+        precip = self.precip_signal
+                # RD,      HHL,      AMHL,     hot_shcf,delta_shcf
+        bounds = [(0, 50), (1e-6, 100), (1e-6, 100), (0.5, 10), (0.01, 10)]
+            
+        global_res = differential_evolution(self._rdii_obj_amm, 
+                                            bounds=bounds, 
+                                            maxiter=50,
+                                            polish=False,
+                                            popsize=3,
+                                            strategy='best1bin'
+                                            )
+        result = minimize(self._rdii_obj_amm, 
+                          bounds=bounds, 
+                          x0=global_res.x,
+                          method='Nelder-Mead',
+                          options={'maxiter':100},
+                          )
+        p1, p2, p3, p4, p5 = result.x
+        self.sim_rdii = amm_3(indicator, precip, self.area, 24*3, 24, p1, p2, p3, p4, p5)
+
+
         
     def get_sim_flow(self):
         # return self.datetime, self.diurnal, self.sim_fast_flow, self.sim_slow_flow
