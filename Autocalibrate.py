@@ -6,8 +6,9 @@ from scipy.stats import pearsonr
 from scipy.optimize import differential_evolution, minimize
 
 class Autocalibrate:
-    def __init__(self, start: np.datetime64, end: np.datetime64, area: float, target: pd.Series, temperature: pd.Series, precip: pd.Series):
-
+    def __init__(self, start: np.datetime64, end: np.datetime64, area: float, target: pd.Series, temperature: pd.Series, precip: pd.Series, test: bool):
+        self.test_mode = test
+        
         self.datetime = np.arange(start, end, np.timedelta64(1, 'h'))
 
         self.target_flow = target[target.index.minute == 0].reindex(self.datetime, fill_value=0).to_numpy()
@@ -210,14 +211,14 @@ class Autocalibrate:
         return out
 
     def _seasonal_obj_amm(self, params):
-        target = self.obs_slow_flow
+        target = self.obs_seasonal
         temp = self.temperature_signal
         precip = self.precip_signal
 
         area = self.area
         p1, p2, p3, p4, p5 = params
 
-        sim_flow = amm_3(temp, precip, area, 24*50, 24*50, p1, p2, p3, p4, p5)
+        sim_flow = amm_3(temp, precip, area, 24*70, 24*70, p1, p2, p3, p4, p5)
 
         mask = ~np.isnan(target) & ~np.isnan(sim_flow)
         target = target[mask]
@@ -262,101 +263,123 @@ class Autocalibrate:
         return out
 
     
-    def optimize(self):
-        ###########################
-        ### Fast Cali
-        indicator = self.temperature_signal
-        precip = self.precip_signal
-                # RD,      HHL,      AMHL,     hot_shcf,delta_shcf
-        bounds = [(1e-6, 1), (1e-6, 10), (1e-6, 100), (0, 10), (0, 10)]
-            
-        global_res = differential_evolution(self._fast_obj_amm, 
-                                            bounds=bounds, 
-                                            maxiter=50,
-                                            polish=False,
-                                            popsize=3,
-                                            strategy='best1bin'
-                                            )
-        result = minimize(self._fast_obj_amm, 
-                          bounds=bounds, 
-                          x0=global_res.x,
-                          method='Nelder-Mead',
-                          options={'maxiter':100},
-                          )
-        p1, p2, p3, p4, p5 = result.x
-        self.sim_fast_flow = amm_3(indicator, precip, self.area, 24, 12, p1, p2, p3, p4, p5)
-        self.fast_param = result.x
+    def optimize(self, weights_df: pd.DataFrame=None):
+        if self.test_mode:
+            indicator = self.temperature_signal
+            precip = self.precip_signal
+            area = self.area
 
-        #####################################
-        ### Slow Cali
-        indicator = self.temperature_signal
-        precip = self.precip_signal
-                # RD,      HHL,      AMHL,     hot_shcf,delta_shcf
-        bounds = [(0, 50), (1e-6, 100), (1e-6, 100), (0.5, 10), (0.01, 10)]
-            
-        global_res = differential_evolution(self._slow_obj_amm, 
-                                            bounds=bounds, 
-                                            maxiter=50,
-                                            polish=False,
-                                            popsize=3,
-                                            strategy='best1bin'
-                                            )
-        result = minimize(self._slow_obj_amm, 
-                          bounds=bounds, 
-                          x0=global_res.x,
-                          method='Nelder-Mead',
-                          options={'maxiter':100},
-                          )
-        p1, p2, p3, p4, p5 = result.x
-        self.sim_slow_flow = amm_3(indicator, precip, self.area, 24*3, 24, p1, p2, p3, p4, p5)
-        self.slow_param = result.x
+            p1, p2, p3, p4, p5 = weights_df["fast"]
+            self.sim_fast_flow = amm_3(indicator, precip, area, 24, 12, p1, p2, p3, p4, p5)
+            self.fast_param = (p1, p2, p3, p4, p5)
 
-        ##############################
-        ### Seasonal Cali
-        indicator = self.temperature_signal
-        precip = self.precip_signal
-                # RD,      HHL,      AMHL,     hot_shcf,delta_shcf
-        bounds = [(0, 1), (50, 400), (10, 400), (0, 2), (0, 2)]
-            
-        global_res = differential_evolution(self._seasonal_obj_amm, 
-                                            bounds=bounds, 
-                                            maxiter=50,
-                                            polish=False,
-                                            popsize=3,
-                                            strategy='best1bin'
-                                            )
-        result = minimize(self._seasonal_obj_amm, 
-                          bounds=bounds, 
-                          x0=global_res.x,
-                          method='Nelder-Mead',
-                          options={'maxiter':100},
-                          )
-        p1, p2, p3, p4, p5 = result.x
-        self.sim_seasonal_flow = amm_3(indicator, precip, self.area, 24*40, 24*40, p1, p2, p3, p4, p5)
-        self.seasonal_param = result.x
+            p1, p2, p3, p4, p5 = weights_df["slow"]
+            self.sim_slow_flow = amm_3(indicator, precip, area, 24*3, 24, p1, p2, p3, p4, p5)
+            self.slow_param = (p1, p2, p3, p4, p5)
 
-        #########
-        # rdii combined cali
-        indicator = self.temperature_signal
-        precip = self.precip_signal
-                # RD,      HHL,      AMHL,     hot_shcf,delta_shcf
-        bounds = [(0, 50), (1e-6, 100), (1e-6, 100), (0.5, 10), (0.01, 10)]
-            
-        global_res = differential_evolution(self._rdii_obj_amm, 
-                                            bounds=bounds, 
-                                            maxiter=50,
-                                            polish=False,
-                                            popsize=3,
-                                            strategy='best1bin'
-                                            )
-        result = minimize(self._rdii_obj_amm, 
-                          bounds=bounds, 
-                          x0=global_res.x,
-                          method='Nelder-Mead',
-                          options={'maxiter':100},
-                          )
-        p1, p2, p3, p4, p5 = result.x
-        self.sim_rdii = amm_3(indicator, precip, self.area, 24*3, 24, p1, p2, p3, p4, p5)
+            p1, p2, p3, p4, p5 = weights_df["seasonal"]
+            self.sim_seasonal_flow = amm_3(indicator, precip, area, 24*50, 24*50, p1, p2, p3, p4, p5)
+            self.seasonal_param = (p1, p2, p3, p4, p5)
+
+            p1, p2, p3, p4, p5 = weights_df["total"]
+            self.sim_rdii = amm_3(indicator, precip, area, 24*3, 24, p1, p2, p3, p4, p5)
+            self.rdii_param = (p1, p2, p3, p4, p5)
+        else:
+            ###########################
+            ### Fast Cali
+            indicator = self.temperature_signal
+            precip = self.precip_signal
+                    # RD,      HHL,      AMHL,     hot_shcf,delta_shcf
+            bounds = [(1e-6, 1), (1e-6, 10), (1e-6, 100), (0, 10), (0, 10)]
+                
+            global_res = differential_evolution(self._fast_obj_amm, 
+                                                bounds=bounds, 
+                                                maxiter=50,
+                                                polish=False,
+                                                popsize=3,
+                                                strategy='best1bin'
+                                                )
+            result = minimize(self._fast_obj_amm, 
+                            bounds=bounds, 
+                            x0=global_res.x,
+                            method='Nelder-Mead',
+                            options={'maxiter':100},
+                            )
+            p1, p2, p3, p4, p5 = result.x
+            self.sim_fast_flow = amm_3(indicator, precip, self.area, 24, 12, p1, p2, p3, p4, p5)
+            self.fast_param = result.x
+
+            #####################################
+            ### Slow Cali
+            indicator = self.temperature_signal
+            precip = self.precip_signal
+                    # RD,      HHL,      AMHL,     hot_shcf,delta_shcf
+            bounds = [(0, 50), (1e-6, 100), (1e-6, 100), (0.5, 10), (0.01, 10)]
+                
+            global_res = differential_evolution(self._slow_obj_amm, 
+                                                bounds=bounds, 
+                                                maxiter=50,
+                                                polish=False,
+                                                popsize=3,
+                                                strategy='best1bin'
+                                                )
+            result = minimize(self._slow_obj_amm, 
+                            bounds=bounds, 
+                            x0=global_res.x,
+                            method='Nelder-Mead',
+                            options={'maxiter':100},
+                            )
+            p1, p2, p3, p4, p5 = result.x
+            self.sim_slow_flow = amm_3(indicator, precip, self.area, 24*3, 24, p1, p2, p3, p4, p5)
+            self.slow_param = result.x
+
+            ##############################
+            ### Seasonal Cali
+            indicator = self.temperature_signal
+            precip = self.precip_signal
+                    # RD,      HHL,      AMHL,     hot_shcf,delta_shcf
+            bounds = [(0, 2), (50, 400), (10, 400), (0, 10), (0, 10)]
+                
+            global_res = differential_evolution(self._seasonal_obj_amm, 
+                                                bounds=bounds, 
+                                                maxiter=50,
+                                                polish=False,
+                                                popsize=3,
+                                                strategy='best1bin'
+                                                )
+            result = minimize(self._seasonal_obj_amm, 
+                            bounds=bounds, 
+                            x0=global_res.x,
+                            method='Nelder-Mead',
+                            options={'maxiter':100},
+                            )
+            p1, p2, p3, p4, p5 = result.x
+            self.sim_seasonal_flow = amm_3(indicator, precip, self.area, 24*70, 24*70, p1, p2, p3, p4, p5)
+            self.seasonal_param = result.x
+
+            #########
+            # rdii combined cali
+            indicator = self.temperature_signal
+            precip = self.precip_signal
+                    # RD,      HHL,      AMHL,     hot_shcf,delta_shcf
+            bounds = [(0, 50), (1e-6, 100), (1e-6, 100), (0.5, 10), (0.01, 10)]
+                
+            global_res = differential_evolution(self._rdii_obj_amm, 
+                                                bounds=bounds, 
+                                                maxiter=50,
+                                                polish=False,
+                                                popsize=3,
+                                                strategy='best1bin'
+                                                )
+            result = minimize(self._rdii_obj_amm, 
+                            bounds=bounds, 
+                            x0=global_res.x,
+                            method='Nelder-Mead',
+                            options={'maxiter':100},
+                            )
+            p1, p2, p3, p4, p5 = result.x
+            self.sim_rdii = amm_3(indicator, precip, self.area, 24*3, 24, p1, p2, p3, p4, p5)
+            self.rdii_param = result.x
 
 
         
