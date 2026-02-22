@@ -6,7 +6,7 @@ from Autocalibrate import Autocalibrate
 import plotly.graph_objects as go
 
 st.set_page_config(
-    page_title="MSOE Wachi Sewer Dashboard",
+    page_title="MSOE Sewer Dashboard",
     page_icon="graphics/msoe_icon.png",
     layout="wide"
 )
