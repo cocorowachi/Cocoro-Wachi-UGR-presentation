@@ -40,17 +40,17 @@ with authors_c:
         st.rerun()
 st.write("---")
 if not st.session_state._init_:
-    path = "Data/"
-    temp = "Temperature.csv"
-    sewer = "MMSD Sewer Flow Data.csv"
-    precip = "MMSD Precipitation Raw Data.csv"
-
-    temperature_df = Data(path + temp)
-    sewer_df = Data(path + sewer)
-    precip_df = Data(path + precip)
-    st.session_state.weights_df = pd.read_csv("Data/parameter.csv")
-    st.session_state.acali = Autocalibrate(np.datetime64("2015-06-01T00:00"), np.datetime64("2020-01-31T23:00"), 64, sewer_df.read('MS0208 FlowMGD'), temperature_df.read("Temperature (F)"), precip_df.read("WS1201 Precip HourlyInches"), True)
     with st.spinner("Initializing Model"):
+        path = "Data/"
+        temp = "Temperature.csv"
+        sewer = "MMSD Sewer Flow Data.csv"
+        precip = "MMSD Precipitation Raw Data.csv"
+
+        temperature_df = Data(path + temp)
+        sewer_df = Data(path + sewer)
+        precip_df = Data(path + precip)
+        st.session_state.weights_df = pd.read_csv("Data/parameter.csv")
+        st.session_state.acali = Autocalibrate(np.datetime64("2015-06-01T00:00"), np.datetime64("2020-01-31T23:00"), 64, sewer_df.read('MS0208 FlowMGD'), temperature_df.read("Temperature (F)"), precip_df.read("WS1201 Precip HourlyInches"), True)
         st.session_state.acali.optimize(st.session_state.weights_df)
         st.session_state._init_ = True
     st.rerun()
@@ -414,7 +414,7 @@ if st.session_state.page == "authors":
                     with col2:
                         st.write("Campus Center: CC-27")
                         st.markdown(
-                            '<a href="https://www.msoe.edu/directory/profile/william.gonwa/" target="_blank">Faculty Resume</a>',
+                            '<a href="https://www.msoe.edu/directory/profile/william.gonwa/" target="_blank">Faculty Resume↗</a>',
                             unsafe_allow_html=True
                         )
     with st.container():
@@ -434,7 +434,7 @@ if st.session_state.page == "authors":
                         st.write("wachic@msoe.edu")
                     with col2:
                         st.markdown(
-                            '<a href="https://www.linkedin.com/in/cocorowachi/" target="_blank">LinkedIn</a>',
+                            '<a href="https://www.linkedin.com/in/cocorowachi/" target="_blank">LinkedIn↗</a>',
                             unsafe_allow_html=True
                         )
                         with open("graphics/wachi_resume.pdf", "rb") as f:
@@ -449,7 +449,7 @@ if st.session_state.page == "authors":
         st.write("- Civil and Architectural Engineering & Construction Management Department")
         # st.write("of Milwaukee School of Engineering.")
         st.markdown(
-            'of <a href="https://www.msoe.edu/" target="_blank">Milwaukee School of Engineering</a>',
+            'of <a href="https://www.msoe.edu/" target="_blank">Milwaukee School of Engineering↗</a>',
             unsafe_allow_html=True
         )
     # used for export data for dr gonwa for excel useage
