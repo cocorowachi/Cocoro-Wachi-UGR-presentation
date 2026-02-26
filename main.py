@@ -21,7 +21,7 @@ with title_cols[0]:
 with title_cols[1]:
     st.header("Breaking Apart Wet Weather Flow Signals Allows Streamlined Auto-calibration of Sewer Hydrology Models")
     st.write("Dr. William Gonwa P.E., Cocoro Wachi Undergraduate")
-methods_c, poster_c, authors_c = st.columns([2,2,2])
+methods_c, poster_c, ref_c, authors_c = st.columns(4)
 with methods_c:
     if st.button("Methods & Case Study", type="primary" if st.session_state.page == "dashboard" else "secondary", disabled=not st.session_state._init_, width="stretch"):
         st.session_state.page = "dashboard"
@@ -33,6 +33,10 @@ with methods_c:
 with poster_c:
     if st.button("Poster", type="primary" if st.session_state.page == "poster" else "secondary", disabled=not st.session_state._init_, width="stretch"):
         st.session_state.page = "poster"
+        st.rerun()
+with ref_c:
+    if st.button("Reference and Code Base", type="primary" if st.session_state.page == "ref" else "secondary", disabled=not st.session_state._init_, width="stretch"):
+        st.session_state.page = "ref"
         st.rerun()
 with authors_c:
     if st.button("Authors/About the Project", type="primary" if st.session_state.page == "authors" else "secondary", disabled=not st.session_state._init_, width="stretch"):
@@ -395,6 +399,18 @@ if st.session_state.page == "poster":
 
 
 
+if st.session_state.page == "ref":
+    st.header("Code Base")
+    st.markdown(
+        '<a href="https://github.com/cocorowachi/Cocoro-Wachi-UGR-presentation" target="_blank">Github Repository for Code Base↗</a>',
+        unsafe_allow_html=True
+    )
+    st.header("References")
+    with st.container():
+        st.write("Ladson, T., Nathan, R. January 2013. “A standard Approach to Baseflow Separation Using the Lyne and Hollick Filter.” Australasian Journal of Water Resources. https://www.researchgate.net/publication/269755620_A_standard_approach_to_baseflow_separation_using_the_Lyne_and_Hollick_filter")
+        st.write("Lin, L. 1989 “A Concordance Correlation Coefficient to Evaluate Reproducibility” Biometrics. https://pubmed.ncbi.nlm.nih.gov/2720055/")
+        st.write("Lyne, V., Hollick, M. September 1979, “Stochastic timevariable rainfall-runoff modelling”, Proceedings of the Hydrology and Water Resources Symposium, Perth, Institution of Engineers National Conference Publication. https://www.researchgate.net/publication/272491803_Stochastic_Time-Variable_Rainfall-Runoff_Modeling")
+        st.write("Edgren, D., Czachorski, R., Gonwa, W. 2024 “Reparameterizing the Antecedent Moisture Model”, Journal of Water Management Modeling. RJN Group, Inc., OHM Advisors, H20metrics, Milwaukee School of Engineering. https://doi.org/10.14796/JWMM.C525")
 if st.session_state.page == "authors":
     with st.container():
         gonwa_cols = st.columns([1,6])
